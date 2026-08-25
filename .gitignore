@@ -1,0 +1,24 @@
+# Node / Next.js
+node_modules/
+.next/
+frontend/next-env.d.ts
+frontend/.env*.local
+frontend/tsconfig.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+backend/.venv/
+*.egg-info/
+
+# Env files
+.env
+backend/.env
+
+# Data
+data/workspace/
+*.db
+
+# OS / editor
+.DS_Store
+*.swp
