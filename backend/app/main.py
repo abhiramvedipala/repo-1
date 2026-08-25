@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import ADMIN_EMAIL, ADMIN_PASSWORD, FRONTEND_ORIGIN
 from app.db import SessionLocal, init_db
 from app.models import User
-from app.routes import auth, files, tasks
+from app.routes import auth, files, tasks, terminal
 from app.security import hash_password
 
 app = FastAPI(title="Lab Platform API")
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(tasks.router)
 app.include_router(files.router)
+app.include_router(terminal.router)
 
 
 @app.on_event("startup")

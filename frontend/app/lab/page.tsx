@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 
 import { api, ApiError } from "@/lib/api";
@@ -13,8 +14,12 @@ import DifficultyStars from "@/components/DifficultyStars";
 import Checklist, { CheckState } from "@/components/Checklist";
 import HintBox from "@/components/HintBox";
 import FileTree from "@/components/FileTree";
-import Editor from "@/components/Editor";
-import Terminal from "@/components/Terminal";
+
+// monaco-editor and xterm.js both touch browser globals at module-eval
+// time, which breaks Next.js's server-side prerender of this page —
+// load both client-only.
+const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
+const Terminal = dynamic(() => import("@/components/Terminal"), { ssr: false });
 
 export default function LabPage() {
   const router = useRouter();
@@ -36,11 +41,6 @@ export default function LabPage() {
 
   const [checkState, setCheckState] = useState<CheckState>("idle");
   const [checkResults, setCheckResults] = useState<CheckResult[] | null>(null);
-
-  const [termLines, setTermLines] = useState<string[]>([
-    "# Terminal-only tasks (like p4-01, p4-02) need a real shell.",
-    "# Coming in Phase 1 — for now, use your own terminal against ./data/workspace/<user_id>/",
-  ]);
 
   // ── auth bootstrap ─────────────────────────────────────────────
   useEffect(() => {
@@ -135,6 +135,9 @@ export default function LabPage() {
       await refreshTasks();
       const detail = await api.getTask(activeTaskId);
       setTaskDetail(detail);
+      // a terminal task may have created files since we last listed them
+      const filesRes = await api.listFiles(activeTaskId);
+      setFiles(filesRes.files);
     } catch (err) {
       setCheckState("idle");
     }
@@ -209,11 +212,10 @@ export default function LabPage() {
           )}
         </div>
 
-        {/* RIGHT PANEL */}
+        {/* RIGHT PANEL — the terminal stays mounted across task switches
+            (one continuous shell session); only its size/siblings change. */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {taskDetail?.isTerminalOnly ? (
-            <Terminal lines={termLines} cwd="~/workspace" />
-          ) : (
+          {!taskDetail?.isTerminalOnly && (
             <>
               <div className="h-40 border-b border-bg-border overflow-y-auto bg-bg-panel">
                 <FileTree files={files} activePath={activeFile} onSelect={openFile} />
@@ -228,11 +230,11 @@ export default function LabPage() {
                   }}
                 />
               </div>
-              <div className="h-40 border-t border-bg-border">
-                <Terminal lines={termLines} cwd="~/workspace" />
-              </div>
             </>
           )}
+          <div className={taskDetail?.isTerminalOnly ? "flex-1 min-h-0" : "h-48 border-t border-bg-border"}>
+            <Terminal />
+          </div>
         </div>
       </div>
     </div>
