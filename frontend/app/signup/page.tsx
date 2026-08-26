@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, ApiError } from "@/lib/api";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,11 +16,11 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await api.login(email, password);
+      await api.signup(email, password);
       router.push("/lab");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "login failed");
+      setError(err instanceof ApiError ? err.message : "sign up failed");
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,9 @@ export default function LoginPage() {
           <div className="text-lg font-semibold tracking-tight">
             <span className="text-accent">Lab</span> Platform
           </div>
-          <div className="text-text-dim text-sm mt-1">Sign in to continue your labs</div>
+          <div className="text-text-dim text-sm mt-1">
+            Create an account — same 21 tasks, your own isolated labs
+          </div>
         </div>
 
         <label className="block text-sm text-text-dim mb-1">Email</label>
@@ -53,11 +55,13 @@ export default function LoginPage() {
         <input
           type="password"
           required
+          minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full mb-4 rounded-md bg-bg-raised border border-bg-border px-3 py-2 text-sm outline-none focus:border-accent"
+          className="w-full mb-1 rounded-md bg-bg-raised border border-bg-border px-3 py-2 text-sm outline-none focus:border-accent"
           placeholder="••••••••"
         />
+        <div className="text-xs text-text-faint mb-4">At least 8 characters.</div>
 
         {error && <div className="mb-4 text-sm text-fail">{error}</div>}
 
@@ -66,13 +70,13 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full rounded-md bg-accent hover:bg-accent-hover disabled:opacity-60 transition-colors py-2 text-sm font-medium"
         >
-          {loading ? "Signing in…" : "Sign in"}
+          {loading ? "Creating account…" : "Create account"}
         </button>
 
         <div className="text-center text-xs text-text-faint mt-4">
-          New here?{" "}
-          <a href="/signup" className="text-accent hover:text-accent-hover">
-            Create an account
+          Already have an account?{" "}
+          <a href="/login" className="text-accent hover:text-accent-hover">
+            Sign in
           </a>
         </div>
       </form>

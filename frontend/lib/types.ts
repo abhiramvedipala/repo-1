@@ -49,7 +49,7 @@ export interface UserOut {
   is_admin: boolean;
 }
 
-export type LabStatusValue = "none" | "starting" | "running" | "stopped" | "expired";
+export type LabStatusValue = "none" | "queued" | "starting" | "running" | "stopped" | "expired";
 
 export interface LabStatus {
   status: LabStatusValue;
@@ -58,4 +58,28 @@ export interface LabStatus {
   startedAt?: string | null;
   expiresAt?: string;
   remainingSeconds?: number;
+  queuePosition?: number;
+  queueLength?: number;
+}
+
+export interface AdminRunningSession {
+  userEmail: string;
+  containerName: string;
+  startedAt: string | null;
+  remainingSeconds: number;
+}
+
+export interface AdminQueuedSession {
+  userEmail: string;
+  queuedForSeconds: number;
+  requestedMinutes: number | null;
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  maxConcurrentSessions: number;
+  runningCount: number;
+  queuedCount: number;
+  running: AdminRunningSession[];
+  queued: AdminQueuedSession[];
 }

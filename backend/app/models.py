@@ -35,10 +35,13 @@ class Session(Base):
 
 
 class LabSession(Base):
-    """A running (or recently stopped) code-server container for a user.
+    """A lab session for a user: queued, running, or finished.
 
-    One active session per user for now (Phase 2 is still single-tenant in
-    spirit); Phase 4 namespaces these across many users.
+    One row per user (a new "start" reuses or replaces it) — containers are
+    namespaced by user_id throughout (workspace dir, container name), so
+    this scales to many concurrent users as-is; Phase 4 adds the piece that
+    was still single-tenant: a global concurrency cap with a wait queue
+    when every slot is taken (see LAB_MAX_CONCURRENT_SESSIONS).
     """
 
     __tablename__ = "lab_sessions"
@@ -53,9 +56,15 @@ class LabSession(Base):
     # its address on that bridge instead — see docker_manager.py.
     container_ip = Column(String, nullable=True)
     container_port = Column(Integer, nullable=False, default=8080)
-    status = Column(String, nullable=False, default="starting")  # starting|running|stopped|expired
-    started_at = Column(DateTime(timezone=True), default=utcnow)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
+    status = Column(String, nullable=False, default="starting")  # queued|starting|running|stopped|expired
+    # Set when queued, so the queue can be served oldest-first.
+    queued_at = Column(DateTime(timezone=True), nullable=True)
+    # The session length the user asked for; applied once a queued session
+    # is actually promoted and its container starts (started_at/expires_at
+    # only mean something from that point on).
+    requested_minutes = Column(Integer, nullable=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class TaskProgress(Base):

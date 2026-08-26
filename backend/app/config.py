@@ -55,3 +55,10 @@ LAB_MEM_LIMIT = os.environ.get("LAB_MEM_LIMIT", "1g")
 
 # How often the background reaper checks for expired sessions to stop.
 LAB_REAPER_INTERVAL_SECONDS = int(os.environ.get("LAB_REAPER_INTERVAL_SECONDS", "30"))
+
+# ── Phase 4: multi-tenant hosting ───────────────────────────────────────
+# Global cap on concurrent *running* containers, across all users — real
+# resource limits (CPU/RAM), so this bounds a single host's total load.
+# Sessions requested beyond this wait in a FIFO queue (see routes/lab.py)
+# and the reaper promotes the oldest one whenever a slot frees up.
+LAB_MAX_CONCURRENT_SESSIONS = int(os.environ.get("LAB_MAX_CONCURRENT_SESSIONS", "3"))

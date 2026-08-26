@@ -1,4 +1,5 @@
 import type {
+  AdminStats,
   CheckResponse,
   FileEntry,
   LabStatus,
@@ -38,8 +39,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   login: (email: string, password: string) =>
     request<UserOut>("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  signup: (email: string, password: string) =>
+    request<UserOut>("/api/auth/signup", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => request("/api/auth/logout", { method: "POST" }),
   me: () => request<UserOut>("/api/auth/me"),
+
+  adminStats: () => request<AdminStats>("/api/admin/stats"),
 
   listTasks: () => request<TaskListResponse>("/api/tasks"),
   getTask: (id: string) => request<TaskDetail>(`/api/tasks/${id}`),

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { useRouter } from "next/navigation";
 
-export default function TopBar({ email }: { email: string }) {
+export default function TopBar({ email, isAdmin }: { email: string; isAdmin?: boolean }) {
   const [infoOpen, setInfoOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -43,6 +43,14 @@ export default function TopBar({ email }: { email: string }) {
 
       <div className="flex items-center gap-3">
         <span className="text-text-dim text-xs hidden sm:inline">{email}</span>
+        {isAdmin && (
+          <a
+            href="/admin"
+            className="text-text-dim hover:text-accent text-xs px-2 py-1 rounded hover:bg-bg-raised transition-colors"
+          >
+            Admin
+          </a>
+        )}
         <button
           onClick={onLogout}
           className="text-text-dim hover:text-text text-xs px-2 py-1 rounded hover:bg-bg-raised transition-colors"

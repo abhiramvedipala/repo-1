@@ -197,7 +197,7 @@ export default function LabPage() {
 
   return (
     <div className="h-screen flex flex-col">
-      <TopBar email={user.email} />
+      <TopBar email={user.email} isAdmin={user.is_admin} />
 
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
         {/* LEFT PANEL — always full-width and readable on small screens;

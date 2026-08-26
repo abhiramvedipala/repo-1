@@ -3,13 +3,13 @@
 
 A self-hosted, KodeKloud-style interactive coding lab platform.
 
-Built in phases. This is **Phase 3**: UI polish to match the reference
-platform more closely — a segmented progress bar, a countdown timer +
-Stop Lab control, an animated info panel, smooth Check-state transitions,
-and a readable mobile fallback. Phase 2 (real per-session `code-server`
-containers) and Phases 0/1 (in-browser Monaco editor + xterm.js terminal,
-kept as the automatic fallback) are unchanged underneath. See the phase
-plan for what's next (Phase 4: multi-tenant hosting).
+Built in phases. This is **Phase 4**: multi-tenant hosting — public
+signup, a global concurrent-session cap with a FIFO wait queue, and a
+simple admin usage view, on top of the per-user container namespacing
+that's been in place since Phase 2. See `DEPLOY.md` for the (unexecuted)
+plan to take this off localhost. Phases 0–3 (task flow, real terminal,
+real per-session `code-server` containers, UI polish) are unchanged
+underneath.
 
 ## Architecture
 
@@ -177,6 +177,26 @@ front both.
 5. Resize back above that width — the full two-pane layout returns
    immediately (it's a CSS breakpoint, not a page reload).
 
+## Verify Phase 4 (multi-tenant hosting) works end to end
+
+1. Go to `/signup` and create a second account (not the seeded admin) —
+   you land on `/lab` with the same 21 tasks, and your own workspace
+   under `data/workspace/{your_user_id}/`, independent of any other user's.
+2. Set a low cap for testing: restart the backend with
+   `LAB_MAX_CONCURRENT_SESSIONS=1 uvicorn app.main:app --port 8000`, then
+   start a lab as the admin and again as your second account — the second
+   one shows **"In queue — position 1 of 1"** with a **Leave queue**
+   button instead of the editor, while its task panel (brief, hint, Check)
+   stays fully usable.
+3. Stop the admin's lab — within `LAB_REAPER_INTERVAL_SECONDS` (30s by
+   default) the queued session is auto-promoted to running, with no
+   action from that user. `docker ps` shows the newly-started container.
+4. As the admin, visit `/admin` — total users, active containers (X / cap,
+   red once at capacity), queue length, and per-session tables (who's
+   running with time remaining, who's queued and for how long). A
+   non-admin hitting `/api/admin/stats` directly gets a 403.
+5. Read `DEPLOY.md` for the (unexecuted) plan to run this somewhere real.
+
 ## Repo layout
 
 ```
@@ -193,12 +213,13 @@ backend/
     docker_manager.py   # Docker SDK: networks, proxy, session containers
     schemas.py
     routes/
-      auth.py
+      auth.py      # login, signup, logout, me
       tasks.py     # /check picks docker-exec vs in-process automatically
       files.py
       terminal.py  # WS /ws/terminal — PTY-attached shell (fallback)
-      lab.py       # /api/lab/{start,stop,status}
+      lab.py       # /api/lab/{start,stop,status} — start/stop, or queue
       proxy.py     # /proxy/{token}/... — HTTP + WS reverse proxy
+      admin.py     # /api/admin/stats — is_admin-gated usage view
   docker/
     lab-code-server/  # Dockerfile: code-server + Python
     proxy/            # Dockerfile + config: tinyproxy, PyPI/npm allowlist
@@ -206,11 +227,14 @@ backend/
 frontend/
   app/
     login/page.tsx
+    signup/page.tsx
+    admin/page.tsx  # is_admin-gated usage dashboard
     lab/page.tsx    # the main authenticated view
   components/       # TopBar, ProgressBar, Checklist, Editor, Terminal,
-                     # LabControls (Start/Stop + countdown), LabFrame (iframe)
+                     # LabControls (Start/Stop/queue + countdown), LabFrame (iframe)
   lib/               # api.ts, types.ts, wsUrl.ts, backendUrl.ts
 data/workspace/      # per-user files on disk (gitignored) — bind-mounted
                       # into that user's container when a lab is running
 docker-compose.yml   # Postgres for local dev
+DEPLOY.md            # unexecuted plan for running this off localhost
 ```
