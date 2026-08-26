@@ -22,3 +22,6 @@ data/workspace/
 # OS / editor
 .DS_Store
 *.swp
+
+# foglamp scan (edit token is a secret)
+.foglamp/
