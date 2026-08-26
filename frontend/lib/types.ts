@@ -48,3 +48,14 @@ export interface UserOut {
   email: string;
   is_admin: boolean;
 }
+
+export type LabStatusValue = "none" | "starting" | "running" | "stopped" | "expired";
+
+export interface LabStatus {
+  status: LabStatusValue;
+  sessionToken?: string;
+  proxyUrl?: string;
+  startedAt?: string | null;
+  expiresAt?: string;
+  remainingSeconds?: number;
+}

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session as DbSession
 
+from app import docker_manager as dm
 from app import pylabs_bridge as pb
 from app.db import get_db
 from app.deps import get_current_user
-from app.models import TaskProgress, User
+from app.models import LabSession, TaskProgress, User
 from app.schemas import CheckResponse, CheckResult, SelectResponse
 
 router = APIRouter(prefix="/api/tasks", tags=["tasks"])
@@ -91,6 +92,11 @@ def select_task(task_id: str, user: User = Depends(get_current_user), db: DbSess
 
     ws_dir = pb.workspace_dir_for(user.id)
     created = pb.materialize_starter_files(task, ws_dir)
+    # in case a lab session container is already running: newly-materialised
+    # files are owned by this (backend) process, not code-server's fixed
+    # user, so without this a mid-session task switch would hand the
+    # learner an unwritable starter file
+    dm.sync_workspace_ownership(ws_dir)
 
     existing = _progress_map(db, user.id).get(task_id, "not_started")
     if existing != "passed":
@@ -105,8 +111,25 @@ def check_task(task_id: str, user: User = Depends(get_current_user), db: DbSessi
     if task is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"no such task: {task_id}")
 
-    ws_dir = pb.workspace_dir_for(user.id)
-    passed, results = pb.run_checks(task, ws_dir)
+    # Phase 2: if a lab session container is running, that's the real
+    # source of truth — check inside it via `docker exec` (it sees exactly
+    # what's on disk in the learner's actual VS Code). Otherwise fall back
+    # to the in-process check against the same workspace dir (Phase 0/1
+    # behaviour), so Check still works without starting a lab session.
+    active_session = (
+        db.query(LabSession)
+        .filter(LabSession.user_id == user.id, LabSession.status == "running")
+        .first()
+    )
+    if active_session is not None and dm.container_running(active_session.container_id):
+        try:
+            outcome = dm.run_check(active_session.container_id, task_id)
+        except dm.LabError as e:
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, str(e))
+        passed, results = outcome["passed"], outcome["results"]
+    else:
+        ws_dir = pb.workspace_dir_for(user.id)
+        passed, results = pb.run_checks(task, ws_dir)
 
     if passed:
         _set_status(db, user.id, task_id, "passed")

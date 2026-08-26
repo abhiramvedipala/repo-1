@@ -1,0 +1,8 @@
+^(.*\.)?pypi\.org$
+^(.*\.)?pythonhosted\.org$
+^(.*\.)?npmjs\.org$
+^(.*\.)?npmjs\.com$
+^(.*\.)?yarnpkg\.com$
+^(.*\.)?cloudflare\.com$
+^(.*\.)?fastly\.net$
+^(.*\.)?fastlylb\.net$

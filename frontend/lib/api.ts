@@ -1,6 +1,7 @@
 import type {
   CheckResponse,
   FileEntry,
+  LabStatus,
   TaskDetail,
   TaskListResponse,
   UserOut,
@@ -44,6 +45,11 @@ export const api = {
   getTask: (id: string) => request<TaskDetail>(`/api/tasks/${id}`),
   selectTask: (id: string) => request<{ created_files: string[] }>(`/api/tasks/${id}/select`, { method: "POST" }),
   checkTask: (id: string) => request<CheckResponse>(`/api/tasks/${id}/check`, { method: "POST" }),
+
+  labStatus: () => request<LabStatus>("/api/lab/status"),
+  labStart: (minutes?: number) =>
+    request<LabStatus>("/api/lab/start", { method: "POST", body: JSON.stringify({ minutes: minutes ?? null }) }),
+  labStop: () => request<{ status: string }>("/api/lab/stop", { method: "POST" }),
 
   listFiles: (taskId: string) => request<{ files: FileEntry[] }>(`/api/files?taskId=${encodeURIComponent(taskId)}`),
   readFile: (path: string) => request<{ path: string; content: string }>(`/api/files/content?path=${encodeURIComponent(path)}`),

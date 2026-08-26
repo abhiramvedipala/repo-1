@@ -11,10 +11,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from ptyprocess import PtyProcess
 
 from app import pylabs_bridge as pb
-from app.config import SESSION_COOKIE_NAME
-from app.db import SessionLocal
-from app.deps import resolve_session_user
-from app.models import User
+from app.deps import get_current_user_ws
 
 router = APIRouter()
 
@@ -27,18 +24,9 @@ CONTROL_PREFIX = "\x00"
 RESIZE_PREFIX = "RESIZE:"
 
 
-def _authenticate(websocket: WebSocket) -> User | None:
-    token = websocket.cookies.get(SESSION_COOKIE_NAME)
-    db = SessionLocal()
-    try:
-        return resolve_session_user(token, db)
-    finally:
-        db.close()
-
-
 @router.websocket("/ws/terminal")
 async def terminal_ws(websocket: WebSocket):
-    user = _authenticate(websocket)
+    user = get_current_user_ws(websocket)
     if user is None:
         await websocket.close(code=4401)
         return

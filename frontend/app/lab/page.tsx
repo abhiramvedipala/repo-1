@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 
 import { api, ApiError } from "@/lib/api";
-import type { CheckResult, FileEntry, TaskDetail, TaskSummary, UserOut } from "@/lib/types";
+import type { CheckResult, FileEntry, LabStatus, TaskDetail, TaskSummary, UserOut } from "@/lib/types";
 
 import TopBar from "@/components/TopBar";
 import ProgressDots from "@/components/ProgressDots";
@@ -14,12 +14,16 @@ import DifficultyStars from "@/components/DifficultyStars";
 import Checklist, { CheckState } from "@/components/Checklist";
 import HintBox from "@/components/HintBox";
 import FileTree from "@/components/FileTree";
+import LabControls from "@/components/LabControls";
+import LabFrame from "@/components/LabFrame";
 
 // monaco-editor and xterm.js both touch browser globals at module-eval
 // time, which breaks Next.js's server-side prerender of this page —
 // load both client-only.
 const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
 const Terminal = dynamic(() => import("@/components/Terminal"), { ssr: false });
+
+const LAB_POLL_MS = 10_000;
 
 export default function LabPage() {
   const router = useRouter();
@@ -41,6 +45,9 @@ export default function LabPage() {
 
   const [checkState, setCheckState] = useState<CheckState>("idle");
   const [checkResults, setCheckResults] = useState<CheckResult[] | null>(null);
+
+  const [lab, setLab] = useState<LabStatus>({ status: "none" });
+  const [labStarting, setLabStarting] = useState(false);
 
   // ── auth bootstrap ─────────────────────────────────────────────
   useEffect(() => {
@@ -67,6 +74,38 @@ export default function LabPage() {
       if (initial) setActiveTaskId(initial);
     });
   }, [user, refreshTasks]);
+
+  // ── lab session (Phase 2: real per-session container) ──────────
+  const refreshLabStatus = useCallback(async () => {
+    const s = await api.labStatus();
+    setLab(s);
+    return s;
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    refreshLabStatus();
+    const t = setInterval(refreshLabStatus, LAB_POLL_MS);
+    return () => clearInterval(t);
+  }, [user, refreshLabStatus]);
+
+  async function onStartLab() {
+    setLabStarting(true);
+    try {
+      const s = await api.labStart();
+      setLab(s);
+    } catch (err) {
+      // surfaced via the "No lab session" state; a real UI would toast this
+      console.error(err);
+    } finally {
+      setLabStarting(false);
+    }
+  }
+
+  async function onStopLab() {
+    await api.labStop();
+    await refreshLabStatus();
+  }
 
   // ── select a task ──────────────────────────────────────────────
   const selectTask = useCallback(async (taskId: string) => {
@@ -212,29 +251,41 @@ export default function LabPage() {
           )}
         </div>
 
-        {/* RIGHT PANEL — the terminal stays mounted across task switches
-            (one continuous shell session); only its size/siblings change. */}
+        {/* RIGHT PANEL */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {!taskDetail?.isTerminalOnly && (
-            <>
-              <div className="h-40 border-b border-bg-border overflow-y-auto bg-bg-panel">
-                <FileTree files={files} activePath={activeFile} onSelect={openFile} />
+          <LabControls lab={lab} starting={labStarting} onStart={onStartLab} onStop={onStopLab} />
+
+          {lab.status === "running" && lab.proxyUrl ? (
+            // Phase 2: a real, isolated code-server container — this iframe
+            // *is* the file tree, editor, and terminal now.
+            <LabFrame proxyUrl={lab.proxyUrl} />
+          ) : (
+            // No lab session yet (or Docker isn't set up): fall back to the
+            // Phase 0/1 in-browser editor + shared terminal, still backed
+            // by the same on-disk workspace.
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {!taskDetail?.isTerminalOnly && (
+                <>
+                  <div className="h-40 border-b border-bg-border overflow-y-auto bg-bg-panel">
+                    <FileTree files={files} activePath={activeFile} onSelect={openFile} />
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <Editor
+                      path={activeFile}
+                      content={fileContent}
+                      onChange={(v) => {
+                        setFileContent(v);
+                        setDirty(true);
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+              <div className={taskDetail?.isTerminalOnly ? "flex-1 min-h-0" : "h-48 border-t border-bg-border"}>
+                <Terminal />
               </div>
-              <div className="flex-1 overflow-hidden">
-                <Editor
-                  path={activeFile}
-                  content={fileContent}
-                  onChange={(v) => {
-                    setFileContent(v);
-                    setDirty(true);
-                  }}
-                />
-              </div>
-            </>
+            </div>
           )}
-          <div className={taskDetail?.isTerminalOnly ? "flex-1 min-h-0" : "h-48 border-t border-bg-border"}>
-            <Terminal />
-          </div>
         </div>
       </div>
     </div>
