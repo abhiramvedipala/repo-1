@@ -3,12 +3,13 @@
 
 A self-hosted, KodeKloud-style interactive coding lab platform.
 
-Built in phases. This is **Phase 2**: real per-session isolation — an
-actual `codercom/code-server` container per active lab, network-locked to
-PyPI/npm only, with resource limits and a hard timeout. Phases 0/1 (the
-in-browser Monaco editor + xterm.js terminal) are kept as an automatic
-fallback for whenever no lab session is running. See the phase plan for
-what's next (Phase 3: UI polish).
+Built in phases. This is **Phase 3**: UI polish to match the reference
+platform more closely — a segmented progress bar, a countdown timer +
+Stop Lab control, an animated info panel, smooth Check-state transitions,
+and a readable mobile fallback. Phase 2 (real per-session `code-server`
+containers) and Phases 0/1 (in-browser Monaco editor + xterm.js terminal,
+kept as the automatic fallback) are unchanged underneath. See the phase
+plan for what's next (Phase 4: multi-tenant hosting).
 
 ## Architecture
 
@@ -96,7 +97,7 @@ front both.
 
 1. Go to `http://localhost:3000`, sign in with the seeded admin
    credentials.
-2. You land on `/lab` with the task list, phase badge, and progress dots
+2. You land on `/lab` with the task list, phase badge, and progress bar
    on the left, and a file tree + Monaco editor + terminal on the right.
 3. Pick task **p1-01** (or whatever's current) — its starter file
    materialises in your workspace and opens in the editor.
@@ -155,6 +156,27 @@ front both.
    and wait — the backend's reaper (runs every 30s) auto-stops and
    removes the container once it expires, without you touching anything.
 
+## Verify Phase 3 (UI polish) works end to end
+
+1. The progress indicator at the top of the left panel is now a row of
+   thin bar segments spanning the full width (one per task), not a loose
+   row of dots — green for passed, a glowing indigo bar for the current
+   task, hover any segment to see its number and title.
+2. Click the **i** icon (top-right) — the "About this lab" panel fades
+   and slides in. Click anywhere outside it, or press **Escape** — it
+   closes. Click **i** again — the icon itself highlights while open.
+3. Hit **Check** on a task — the button shows a spinning indicator while
+   the request is in flight, then the checklist rows fade in one after
+   another (not all at once), each check/cross icon popping in just after
+   its row's label.
+4. Resize your browser below ~1024px wide (or open on a phone) — the
+   right pane (editor/terminal/lab iframe) disappears and a note appears
+   telling you to open on desktop to write code; the task panel itself
+   (title, brief, hint, Check/Next, checklist) stays fully readable and
+   usable — Check still runs against whatever's on disk.
+5. Resize back above that width — the full two-pane layout returns
+   immediately (it's a CSS breakpoint, not a page reload).
+
 ## Repo layout
 
 ```
@@ -185,7 +207,7 @@ frontend/
   app/
     login/page.tsx
     lab/page.tsx    # the main authenticated view
-  components/       # TopBar, ProgressDots, Checklist, Editor, Terminal,
+  components/       # TopBar, ProgressBar, Checklist, Editor, Terminal,
                      # LabControls (Start/Stop + countdown), LabFrame (iframe)
   lib/               # api.ts, types.ts, wsUrl.ts, backendUrl.ts
 data/workspace/      # per-user files on disk (gitignored) — bind-mounted

@@ -9,7 +9,7 @@ import { api, ApiError } from "@/lib/api";
 import type { CheckResult, FileEntry, LabStatus, TaskDetail, TaskSummary, UserOut } from "@/lib/types";
 
 import TopBar from "@/components/TopBar";
-import ProgressDots from "@/components/ProgressDots";
+import ProgressBar from "@/components/ProgressBar";
 import DifficultyStars from "@/components/DifficultyStars";
 import Checklist, { CheckState } from "@/components/Checklist";
 import HintBox from "@/components/HintBox";
@@ -199,19 +199,20 @@ export default function LabPage() {
     <div className="h-screen flex flex-col">
       <TopBar email={user.email} />
 
-      <div className="flex-1 flex overflow-hidden">
-        {/* LEFT PANEL */}
-        <div className="w-[35%] min-w-[360px] border-r border-bg-border flex flex-col overflow-y-auto bg-bg-panel">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* LEFT PANEL — always full-width and readable on small screens;
+            fixed-width sidebar from the lg breakpoint up. */}
+        <div className="flex-1 min-h-0 lg:flex-none lg:w-[35%] lg:min-w-[360px] border-b lg:border-b-0 lg:border-r border-bg-border flex flex-col overflow-y-auto bg-bg-panel">
           <div className="p-4 border-b border-bg-border">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold text-accent uppercase tracking-wide">
                 {taskDetail ? `Phase ${taskDetail.phase} — ${taskDetail.phaseName}` : "Loading"}
               </span>
               <span className="text-xs text-text-faint">
-                {completed}/{total} complete
+                {taskDetail ? `Task ${taskDetail.index}/${total}` : ""} · {completed}/{total} complete
               </span>
             </div>
-            <ProgressDots tasks={tasks} activeTaskId={activeTaskId} onSelect={setActiveTaskId} />
+            <ProgressBar tasks={tasks} activeTaskId={activeTaskId} onSelect={setActiveTaskId} />
           </div>
 
           {taskDetail && (
@@ -232,14 +233,17 @@ export default function LabPage() {
                 <button
                   onClick={onCheck}
                   disabled={checkState === "checking"}
-                  className="px-4 py-2 rounded-md bg-accent hover:bg-accent-hover disabled:opacity-60 text-sm font-medium transition-colors"
+                  className="px-4 py-2 rounded-md bg-accent hover:bg-accent-hover disabled:opacity-90 text-sm font-medium transition-colors inline-flex items-center gap-2"
                 >
+                  {checkState === "checking" && (
+                    <span className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                  )}
                   {checkState === "checking" ? "Checking…" : "Check"}
                 </button>
                 <button
                   onClick={onNext}
                   disabled={!canGoNext}
-                  className="px-4 py-2 rounded-md border border-bg-border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:border-accent hover:text-accent transition-colors"
+                  className="px-4 py-2 rounded-md border border-bg-border text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:border-accent hover:text-accent transition-all"
                 >
                   Next →
                 </button>
@@ -251,8 +255,12 @@ export default function LabPage() {
           )}
         </div>
 
-        {/* RIGHT PANEL */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* RIGHT PANEL — editor/terminal/lab environment need real screen
+            space and a keyboard, so it's desktop-only (lg+); mobile gets a
+            plain note instead. CSS-hidden rather than unmounted, so a
+            terminal session or running lab survives a resize across the
+            breakpoint. */}
+        <div className="hidden lg:flex flex-1 flex-col overflow-hidden">
           <LabControls lab={lab} starting={labStarting} onStart={onStartLab} onStop={onStopLab} />
 
           {lab.status === "running" && lab.proxyUrl ? (
@@ -286,6 +294,14 @@ export default function LabPage() {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="flex lg:hidden shrink-0 items-start gap-3 px-4 py-3 border-t border-bg-border bg-bg-panel">
+          <span className="text-lg leading-none">🖥️</span>
+          <p className="text-xs text-text-dim leading-relaxed">
+            The editor, terminal, and lab environment need a bigger screen — open this on a laptop or desktop to
+            write and run code. You can still read the brief, hints, and check results here.
+          </p>
         </div>
       </div>
     </div>
