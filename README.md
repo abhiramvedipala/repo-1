@@ -1,4 +1,4 @@
-# Lab Platform — LAB platform
+# Lab Platform 
 
 
 A self-hosted, KodeKloud-style interactive coding lab platform.
